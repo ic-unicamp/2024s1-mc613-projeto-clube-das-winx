@@ -8,14 +8,6 @@ module top (
 	 output [6:0] HEX3,
 	 output [6:0] HEX4,
 	 output [6:0] HEX5,
-	 output wire VGA_SYNC_N,
-	 output wire VGA_BLANK_N,
-	 output wire [7:0] VGA_R,
-	 output wire [7:0] VGA_G,
-	 output wire [7:0] VGA_B,
-	 output wire VGA_VS,
-	 output wire VGA_HS,
-	 output VGA_CLK,
 	 output reg clk_out_1,
 	 output reg clk_out_2
 );
