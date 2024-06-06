@@ -12,8 +12,8 @@ module top (
 	 output reg clk_out_2
 );
 
-    reg [25:0] count;      // Registrador para contagem (suficiente para contar até 50.000.000)
-	 wire reset, mode;
+    reg [25:0] count;
+	 wire reset, cronometro_start, timer_function, timer_set, timer_start, cronometro_stop, plus, modeSeconds, modeMinutes, modeHours;
 	 wire [23:0] bcd1, bcd2, bcd3;
 	 reg [6:0] seconds_reg_timer, minutes_reg_timer, hours_reg_timer, seconds_reg_cronometro, minutes_reg_cronometro, hours_reg_cronometro, seconds_reg_timer_2, minutes_reg_timer_2, hours_reg_timer_2;
 
@@ -24,7 +24,7 @@ module top (
             clk_out_1 = 1'b0;
 				clk_out_2 = 1'b0;
         end else begin
-            if (count == 26'd24_999_999) begin // 50.000.000 - 1
+            if (count == 26'd24_999_999) begin
                 count = 26'd0;
                 clk_out_1 = ~clk_out_1;
 					 clk_out_2 = ~clk_out_2;
@@ -40,33 +40,41 @@ module top (
 	 assign timer_set = ~KEY[1];
 	 assign timer_start = SW[2];
 	 assign cronometro_stop = ~SW[0];
-	 assign plus = SW[6];
-	 assign mode = (SW[8] && !SW[7]) ? 2'b01 : SW[7] ? 2'b10 : 2'b00;
+	 assign plus = SW[7];
+	 assign modeSeconds = ~SW[8] && ~SW[9];
+	 assign modeMinutes = SW[8] && ~SW[9];
+	 assign modeHours = SW[9];
 	 
 	 always @(posedge timer_set or posedge reset) begin
 		if (reset) begin
             seconds_reg_timer = 7'b0000000;
 				minutes_reg_timer = 7'b0000000;
 				hours_reg_timer = 7'b0000000;
-       end else begin
-			if (hours_reg_timer == 7'b1100011 && mode == 2'b10 && plus) begin
-				hours_reg_timer = 7'b0000000;
-			end if (minutes_reg_timer == 7'b0111011 && mode == 2'b01 && plus) begin
-				minutes_reg_timer = 7'b0000000;
-			end if (seconds_reg_timer == 7'b0111011 && mode == 2'b00 && plus) begin
-				seconds_reg_timer = 7'b0000000;
-			end if (hours_reg_timer == 7'b0000000 && mode == 2'b10 && !plus) begin
-				hours_reg_timer = 7'b1100011;
-			end if (minutes_reg_timer == 7'b0000000 && mode == 2'b01 && !plus) begin
-				minutes_reg_timer = 7'b0111011;
-			end if (seconds_reg_timer == 7'b0000000 && mode == 2'b00 && !plus) begin
-				seconds_reg_timer = 7'b0111011;
-			end else if (timer_set) begin
-				case (mode)
-					2'b00: seconds_reg_timer = plus ? seconds_reg_timer + 1 : seconds_reg_timer - 1;
-					2'b01: minutes_reg_timer = plus ? minutes_reg_timer + 1 : minutes_reg_timer - 1;
-					2'b10: hours_reg_timer = plus ? hours_reg_timer + 1 : hours_reg_timer - 1;
-				endcase
+       end else if (timer_set) begin
+			if (modeSeconds) begin
+				if (seconds_reg_timer == 7'b0111011 && plus) begin
+					seconds_reg_timer = 7'b0000000;
+				end else if (seconds_reg_timer == 7'b0000000 && !plus) begin
+					seconds_reg_timer = 7'b0111011;
+				end else begin
+					seconds_reg_timer = plus ? seconds_reg_timer + 1 : seconds_reg_timer - 1;
+				end
+			end else if (modeMinutes) begin
+				if (minutes_reg_timer == 7'b0111011 && plus) begin
+					minutes_reg_timer = 7'b0000000;
+				end else if (minutes_reg_timer == 7'b0000000 && !plus) begin
+					minutes_reg_timer = 7'b0111011;
+				end else begin
+					minutes_reg_timer = plus ? minutes_reg_timer + 1 : minutes_reg_timer - 1;
+				end
+			end else if (modeHours) begin
+				if (hours_reg_timer == 7'b1100011 && plus) begin
+					hours_reg_timer = 7'b0000000;
+				end else if (hours_reg_timer == 7'b0000000 && modeHours && !plus) begin
+					hours_reg_timer = 7'b1100011;
+				end else begin
+					hours_reg_timer = plus ? hours_reg_timer + 1 : hours_reg_timer - 1;
+				end
 			end
       end 
 	 end
@@ -92,16 +100,21 @@ module top (
                 seconds_reg_cronometro = seconds_reg_cronometro + 1;
             end
         end else if (timer_start) begin
-			 if (minutes_reg_timer_2 == 7'b0000000 && hours_reg_timer_2 > 0) begin
-                minutes_reg_timer_2 = 7'b0111100;
-					 hours_reg_timer_2 = hours_reg_timer_2 - 7'b0000001;
-           end if (seconds_reg_timer_2 == 7'b0000000 && minutes_reg_timer_2 > 0) begin
-                seconds_reg_timer_2 = 7'b0111100;
-					 minutes_reg_timer_2 = minutes_reg_timer_2 - 7'b0000001;
-				end if (seconds_reg_timer_2 == 0 && minutes_reg_timer_2 == 0 && hours_reg_timer_2 == 0) begin
+			  if (seconds_reg_timer_2 == 0 && minutes_reg_timer_2 == 0 && hours_reg_timer_2 == 0) begin
 					 seconds_reg_timer_2 = 7'b0000000;
            end else begin
-               seconds_reg_timer_2 = seconds_reg_timer_2 - 1;
+					if (seconds_reg_timer_2 == 7'b0000000 && minutes_reg_timer_2 >= 0) begin
+						seconds_reg_timer_2 = 7'b0111011;
+						if (minutes_reg_timer_2 == 7'b0000000 && hours_reg_timer_2 > 0) begin
+							minutes_reg_timer_2 = 7'b0111011;
+							hours_reg_timer_2 = hours_reg_timer_2 - 7'b0000001;
+						end else begin
+							minutes_reg_timer_2 = minutes_reg_timer_2 - 7'b0000001;
+						end
+					end
+					else begin
+						seconds_reg_timer_2 = seconds_reg_timer_2 - 1;
+					end
            end
 		end else begin
 			seconds_reg_timer_2 = seconds_reg_timer;
