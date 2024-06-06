@@ -1,6 +1,6 @@
 module top (
-    input CLOCK_50,  // Clock de entrada de 50 MHz
-    input [3:0] KEY,      // Sinal de reset
+    input CLOCK_50,
+    input [3:0] KEY,
 	 input [9:0] SW,
 	 output [6:0] HEX0,
 	 output [6:0] HEX1,
